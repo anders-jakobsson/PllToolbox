@@ -16,8 +16,7 @@ export Block
 
 
 """
-    Block(name, H=tf(1), noise=Vector{<:
-    	AbstractNoise}())
+    Block(name, H=tf(1), noise=Vector{<:AbstractNoise})
 
 Construct a PLL block from the given name, transfer function and noise argument.
 

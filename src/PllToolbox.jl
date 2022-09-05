@@ -7,6 +7,7 @@ include("types/noise.jl")
 include("types/block.jl")
 include("types/pll.jl")
 include("types/other.jl")
+# include("types/tf.jl")
 include("utilities/block_factory.jl")
 include("utilities/filter_factory.jl")
 include("utilities/num2si.jl")
@@ -417,8 +418,13 @@ struct PllNoiseInfo
 end
 
 function Base.show(io::IO, x::PllNoiseInfo)
-	println("PLL phase noise at $(num2si(String,x.fc))")
-	
+	println("PLL phase noise info:")
+	println("    center frequency: $(num2si(String,x.fc))Hz")
+	println("    integration limits: $(num2si(String,x.fstart))Hz to $(num2si(String,x.fstop))Hz")
+	println("    integrated phase noise: $(round(x.ipn,digits=2)) dBc")
+	println("    phase error: $(round(x.pe,digits=2))°")
+	println("    residual FM: $(num2si(String,x.rfm))Hz")
+	println("    jitter: $(num2si(String, x.j))s")
 end
 
 
@@ -451,6 +457,5 @@ export pllnoiseprint
 function pllnoiseprint(pll::PLL, f::AbstractArray{Float64}, fc::Float64, fstart::Float64=f[1], fstop::Float64=f[end])
 	show(pllnoiseinfo(pll,f,fc,fstart,fstop))
 end
-
 
 end # module

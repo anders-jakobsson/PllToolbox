@@ -17,8 +17,7 @@ struct BlockNoise
 	indnoise::Array{Float64,2}
 	noisestr::Vector{String}
 	function BlockNoise(block::Block, f::Vector{Float64}, ntf::LTISystem)
-		magresp, = bode(ntf,2π*f)
-		magresp  = magresp.^2
+		magresp = abs.(freqresp(ntf, 2π*f)[:]).^2
 		srcnoise = Array{Float64,2}(undef,length(f),length(block.noise))
 		indnoise = Array{Float64,2}(undef,length(f),length(block.noise))
 		noisestr = Vector{String}(undef,length(block.noise))

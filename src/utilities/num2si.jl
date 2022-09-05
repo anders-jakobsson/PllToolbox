@@ -27,7 +27,12 @@ function num2si(x::AbstractArray{<:Real})
 	return xs,xp,xk
 end
 
-function num2si(::Type{String}, x::Real)
+function num2si(::Type{String}, x::Integer)
 	xs,xp, = num2si(x)
-	return String(xs) * " " * xp
+	return string(xs) * " " * xp
+end
+
+function num2si(::Type{String}, x::Real, n::Integer=2)
+	xs,xp, = num2si(x)
+	return string(round(xs,digits=n)) * " " * xp
 end

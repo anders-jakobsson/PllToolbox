@@ -73,7 +73,7 @@ end
 
 
 function (x::WhiteNoise)(f::Vector{Float64})
-	m, = bode(x.H, 2π*f)
+	m = abs.(freqresp(x.H, 2π*f))[:]
 	x.psd * (m.^2)
 end
 
@@ -129,7 +129,7 @@ struct PinkNoise <: AbstractNoise
 end
 
 function (x::PinkNoise)(f::Vector{Float64})
-	m, = bode(x.H, 2π*f)
+	m = abs.(freqresp(x.H, 2π*f))[:]
 	y = similar(f)
 
 	dflin = diff(x.fx)
@@ -137,19 +137,23 @@ function (x::PinkNoise)(f::Vector{Float64})
 	if isnothing(findfirst(x->abs(x-dflog[1])>eps(0.0), dflog))
 		frange = range(log10(x.fx[1]), log10(x.fx[end]), length(x.fx))
 		itp = scale(interpolate(x.px, BSpline(Quadratic(Line(OnGrid())))), frange)
-		y = itp(log10.(f))
+		etp = extrapolate(itp,Line())
+		y = etp(log10.(f))
 
 	elseif isnothing(findfirst(x->abs(x-dflin[1])>eps(0.0), dflin))
 		frange = range(x.fx[1], x.fx[end], length(x.fx))
 		itp = scale(interpolate(x.px, BSpline(Quadratic(Line(OnGrid())))), frange)
-		y = itp(f)
+		etp = extrapolate(itp,Line())
+		y = etp(f)
 	else
 		if std(dflin)<std(dflog)
 			itp = interpolate((x.fx,), x.px, Gridded(Linear()))
-			y = itp(f)
+			etp = extrapolate(itp,Line())
+			y = etp(f)
 		else
 			itp = interpolate((log10.(x.fx),), x.px, Gridded(Linear()))
-			y = itp(log10.(f))
+			etp = extrapolate(itp,Line())
+			y = etp(log10.(f))
 		end
 	end
 
@@ -181,7 +185,7 @@ struct ΣΔNoise <: AbstractNoise
 end
 
 function (x::ΣΔNoise)(f::Vector{Float64})
-	m, = bode(x.H, 2π*f)
+	m = abs.(freqresp(x.H, 2π*f))[:]
 	(x.a*(x.b*sin.(f/x.f0)).^x.c) .* (m.^2)
 end
 
