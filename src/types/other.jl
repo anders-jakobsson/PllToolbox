@@ -2,14 +2,13 @@
 # -----------------------------------------------------------------------------
 # Imported types
 
-using ControlSystems
+using ControlSystems:LTISystem
 
 
 
 
 #------------------------------------------------------------------------------
 # Declared types
-
 struct BlockNoise
 	block::Block
 	ntf::LTISystem
@@ -33,7 +32,8 @@ end
 
 
 
-
+#-------------------------------------------------------------------------------------------
+# Interface implementations
 function Base.show(io::IO, x::BlockNoise)
 	if length(x.noisestr)>1
 		numstr = "$(length(x.noisestr)) noise sources"

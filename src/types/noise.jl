@@ -4,7 +4,7 @@
 
 using Statistics:std
 using ControlSystems:LTISystem
-using Interpolations
+using Interpolations:BSpline,Gridded,Line,Linear,OnGrid,Quadratic,extrapolate,interpolate,scale
 
 
 
@@ -50,7 +50,7 @@ function (n::AbstractNoise)(f::Vector{Float64}) end
 	WhiteNoise(name::String, psd::Float64, H::LTISystem=tf(1))
 
 Construct a white noise source from the given name, power spectral density and transfer 
-function.
+function. `H` is an additional transfer function applied when calculating the PSD.
 
 # Examples
 ```@meta
@@ -89,7 +89,7 @@ end
 
 Construct a pink noise source, interpolated from a set of frequency/PSD pairs.
 
-#Arguments
+# Arguments
 - `name::String`: noise source name
 - `fx::Vector{<:Real}`: vector of frequencies
 - `px::Vector{<:Real}`: vector of power spectral densities
@@ -167,10 +167,15 @@ end
 
 
 
- """
- 	ΣΔNoise(name::String, a::Real, b::Real, c::Real, f0::Real)
+"""
+	ΣΔNoise(name::String, a::Real, b::Real, c::Real, f0::Real, H::LTISystem=tf(1))
+	ΔΣNoise(...)
+	SDNoise(...)
+	DSNoise(...)
 
- Construct a ΣΔ-modulated noise source with the PSD a⋅[b·sin(f/f0)]^c.
+Construct a ΣΔ-modulated noise source with the PSD a⋅[b·sin(f/f0)]^c. This type has several
+aliases for convenience. `H` is an additional transfer function applied when calculating 
+the PSD.
  """
 struct ΣΔNoise <: AbstractNoise
 	name::String

@@ -1,6 +1,13 @@
 module PllToolbox
 
-using Plots, PyPlot, Roots, Printf, OrdinaryDiffEq, Polynomials, LinearAlgebra
+using DataFrames
+using LinearAlgebra
+using OrdinaryDiffEq
+using Plots
+using Polynomials
+using Printf
+using PyPlot
+using Roots
 
 
 include("types/noise.jl")
@@ -12,28 +19,7 @@ include("utilities/block_factory.jl")
 include("utilities/filter_factory.jl")
 include("utilities/num2si.jl")
 include("utilities/printing.jl")
-
-
-
-
-#-------------------------------------------------------------------------------------------
-# PLL transfer function operations
-
-export plltf
-
-"""
-	G,L,F,I,O = plltf(pll)
-
-Return the total, forward, feedback, input and output transfer functions of a PLL.
-"""
-function plltf(pll::PLL)
-	I = reduce(*, (s->s.H).(pll.input),    init=tf(1))
-	L = reduce(*, (s->s.H).(pll.forward),  init=tf(1))
-	F = reduce(*, (s->s.H).(pll.feedback), init=tf(1))
-	O = reduce(*, (s->s.H).(pll.output),   init=tf(1))
-	G = L/(1+L*F)
-	(G,L,F,I,O)
-end
+include("analysis/transfer_functions.jl")
 
 
 
@@ -80,8 +66,9 @@ function pllstep(pll::PLL, tfinal=0, npoints=100)
 	sol = solve(prob,Rodas4P(), abstol=1e-12, reltol=1e-6)
 	t = LinRange(0,tfinal,npoints)
 	y = [(C*sol(tₖ))[1] for tₖ in t]
-	return (y,t)
+	return DataFrame(t=t, y=y)
 end
+
 
 
 
@@ -105,7 +92,6 @@ function pllnoise(pll::PLL, f::Vector{Float64})
 	nblkFb = _pllnoise_branch(pll.feedback, f, -O*G)
 	nblkOp = _pllnoise_branch(pll.output, f)
 	nblocks = [nblkIp;nblkFw;nblkFb;nblkOp]
-	# @infiltrate
 	totnoise = zeros(size(f))
 	for nb in nblocks 
 		if ~isempty(nb.indnoise)
