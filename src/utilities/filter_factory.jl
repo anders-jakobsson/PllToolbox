@@ -1,7 +1,3 @@
-export pllfilter
-
-
-
 function _rms(x::Vector{Float64})
 	sqrt(sum(x.^2)/length(x))
 end
@@ -207,7 +203,3 @@ function pllfilter(name::String, res::Vector{<:Real}, cap::Vector{<:Real}, temp:
 
 	Block(name, H, noise),R,C
 end
-
-
-
-

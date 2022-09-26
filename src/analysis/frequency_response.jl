@@ -156,8 +156,6 @@ end
 
 
 
-export pllbodeinfo
-
 """
 	bodeinfo = pllbodeinfo(pll)
 
@@ -201,7 +199,6 @@ end
 
 
 
-export pllbode
 
 """
 	pllbode(pll::PLL,f)

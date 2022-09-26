@@ -9,7 +9,6 @@ using AbstractTrees
 #-------------------------------------------------------------------------------------------
 # Internal functions
 
-export dB10, dB20
 dB10(x) = 10*log10(x)
 dB20(x) = 2*dB10(x)
 
@@ -18,7 +17,6 @@ dB20(x) = 2*dB10(x)
 
 #-------------------------------------------------------------------------------------------
 # PLL type & constructors
-export PLL
 """
 	PLL
 
@@ -202,7 +200,6 @@ end
 
 
 
-export pllntf
 """
 	ntf = pllntf(pll)
 

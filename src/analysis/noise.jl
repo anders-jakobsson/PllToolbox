@@ -13,31 +13,127 @@ struct PllNoise{T}
 end
 
 
-pllnoise(pll::PLL, f::Real) = pllnoise(pll, [Float64(f)])
-pllnoise(pll::PLL, f::AbstractArray{<:Real}) = pllnoise(pll, Float64.(f[:]))
-function pllnoise(pll::PLL, f::Vector{Float64})
-	allblocks = vcat(pll.input,pll.forward,pll.feedback,pll.output)
-	numnoise  = sum([length(b.noise) for b in allblocks])
+struct PllIntegNoise{T}
+	frequency::Pair{T,T}
+	total::T
+	byname::Dict{String,T}
+end
 
-	total   = zeros(length(f))
-	byindex = Vector{PllNoiseSource{Float64}}(undef,numnoise)
-	byname  = Dict{String,PllNoiseSource{Float64}}()
-	kᵢ = 1
+
+struct PllNoiseInfo
+	fc::Float64
+	fstart::Float64
+	fstop::Float64
+	ipn::Float64
+	pe::Float64
+	rfm::Float64
+	j::Float64
+end
+
+
+pllnoise(pll::PLL, f::Real, kw...) = pllnoise(pll, [Float64(f)]; kw...)
+pllnoise(pll::PLL, f::AbstractArray{<:Real}, kw...) = pllnoise(pll, Float64.(f[:]); kw...)
+function pllnoise(pll::PLL, f::Vector{Float64}; byfiltertype::Bool=false)
+	allblocks = vcat(pll.input,pll.forward,pll.feedback,pll.output)
+	if byfiltertype
+		numnoise = length(unique(block.ntf.type for block in allblocks))
+	else
+		numnoise = sum([length(b.noise) for b in allblocks])
+	end
+	
+	total  = zeros(length(f))
+	byname = Dict{String,PllNoiseSource{Float64}}()
 	for bᵢ in allblocks 
 		pr = magresp(bᵢ.ntf,f).^2
 		for nᵢ in bᵢ.noise
 			noise = nᵢ(f)
 			contr = noise.*pr
-			nsrc  = PllNoiseSource{Float64}(bᵢ.ntf.type,noise,contr)
-			byindex[kᵢ] = nsrc
-			byname[nᵢ.name] = nsrc
+			if byfiltertype
+				type = bᵢ.ntf.type
+				if String(type) in keys(byname)
+					nsrc = byname[String(type)]
+					nsrc.source .+= noise
+					nsrc.contribution .+= contr
+				else
+					byname[String(type)] = PllNoiseSource{Float64}(type, noise, contr)
+				end
+			else
+				byname[nᵢ.name] = PllNoiseSource{Float64}(bᵢ.ntf.type,noise,contr)
+			end
 			total .+= contr
-			kᵢ += 1
 		end
 	end
 
-	PllNoise(f, total, byindex, byname)
+	PllNoise(f, total, collect(values(byname)), byname)
 end
+
+
+function pllintegnoise(pll::PLL, fstart::Float64=1e3, fstop::Float64=100e6, npoints::Integer=1000; kw...)
+	f = 10 .^LinRange(log10(fstart),log10(fstop),npoints)
+	pllintegnoise(pll, f; kw...)
+end
+function pllintegnoise(pll::PLL, f::Vector{Float64}; kw...)
+	pllintegnoise(pllnoise(pll,f;kw...))
+end
+function pllintegnoise(pn::PllNoise, fstart::Number=pn.frequency[1], fstop::Number=pn.frequency[end])
+	istart = findfirst(x->x>=fstart, pn.frequency)
+	istop  = findlast(x->x<=fstop, pn.frequency)
+	println(pn.frequency)
+	df = diff(pn.frequency[istart:istop])
+
+	total  = 2*sum(pn.total[istart:istop-1] .* df)
+	byname = Dict{String,Float64}()
+	for (name,pns) in pn.byname
+		contr = 2*sum(pns.contribution[istart:istop-1] .* df)
+		byname[name] = contr
+	end
+	PllIntegNoise(Pair(pn.frequency[istart],pn.frequency[istop]), total, byname)
+end
+
+
+
+
+
+function pllnoiseinfo(pll::PLL, fc::Float64, fstart::Float64=1e3, fstop::Float64=100e6, npoints::Integer=1000)
+	pn = pllnoise(pll,10 .^LinSpace(fstart,fstop,npoints))
+	pllnoiseinfo(pn,fc)
+end
+
+
+function pllnoiseinfo(pn::PllNoise, fc::Float64, fstart::Float64=pn.frequency[1], fstop::Float64=pn.frequency[end])
+	f = pn.frequency
+	istart = findfirst(x->x>=fstart, f)
+	istop = findlast(x->x<=fstop, f)
+	fi  = view(f, istart:istop)
+	fd  = view(f, istart:istop-1)
+	pnd = view(pn.total, istart:istop-1,:)
+	df = diff(fi)
+
+	ipn = 2*sum(pnd .* df)
+	pe  = 180*sqrt(ipn)/π
+	rfm = sqrt(2*sum(fd.^2 .* pnd .* df))
+	j   = pe./(360*fc)
+
+	return PllNoiseInfo(fc,fstart,fstop,ipn,pe,rfm,j)
+end
+
+
+
+
+#-------------------------------------------------------------------------------------------
+# Show implementation
+function Base.show(io::IO, ::MIME"text/plain", x::PllNoiseInfo)
+	println("PLL phase noise info:")
+	println("    center frequency: $(num2si(String,x.fc))Hz")
+	println("    integration limits: $(num2si(String,x.fstart))Hz to $(num2si(String,x.fstop))Hz")
+	println("    integrated phase noise: $(round(x.ipn,digits=2)) dBc")
+	println("    phase error: $(round(x.pe,digits=2))°")
+	println("    residual FM: $(num2si(String,x.rfm))Hz")
+	println("    jitter: $(num2si(String, x.j))s")
+end
+
+
+
 
 
 
@@ -105,6 +201,7 @@ noiseplot!(pll::PLL,f::AbstractVector{T}; kw...) where T<:Number = noiseplot!(pl
 	xminorticks := true
 	xlabel      := "Offset frequency (Hz)"
 	ylabel      := "Phase noise (dBc/Hz)"
+	title       --> "PLL phase noise"
 	legend      --> true
 	grid        --> true
 	
@@ -125,6 +222,27 @@ noiseplot!(pll::PLL,f::AbstractVector{T}; kw...) where T<:Number = noiseplot!(pl
 end
 
 
+
+
+@userplot IntegNoisePlot
+
+
+@recipe function finp(cp::IntegNoisePlot)
+	length(cp.args)≥1 || error("No arguments supplied")
+	arg  = cp.args[1]
+	f    = arg.frequency
+	tot  = arg.total
+	title  --> "Noise contribution"
+	@series begin
+		seriestype := :pie
+		x = String.(keys(arg.byname))
+		y = collect(values(arg.byname))
+		x,y	
+	end
+end
+
+
+
 @userplot ContributionPlot
 
 contributionplot(pll::PLL; kw...) = contributionplot(pll,_noise_fvec(pll); kw...)
@@ -132,7 +250,7 @@ contributionplot(pll::PLL,f::AbstractVector{T}; kw...) where T<:Number = contrib
 contributionplot!(pll::PLL; kw...) = contributionplot!(pll,_noise_fvec(pll); kw...)
 contributionplot!(pll::PLL,f::AbstractVector{T}; kw...) where T<:Number = contributionplot!(pllnoise(pll,f); kw...)
 
-@recipe function fcp(cp::ContributionPlot; byfiltertype=false)
+@recipe function fcp(cp::ContributionPlot)
 	length(cp.args)≥1 || error("No arguments supplied")
 	arg  = cp.args[1]
 	f    = arg.frequency
@@ -140,19 +258,7 @@ contributionplot!(pll::PLL,f::AbstractVector{T}; kw...) where T<:Number = contri
 	fₘᵢₙ = minimum(f)
 	fₘₐₓ = maximum(f)
 	
-	group = Dict{String,Vector{Float64}}()
-	if byfiltertype
-		names = unique([String(src.type) for src in arg.byindex])
-		for src in arg.byindex
-			group[String(src.type)] = src.contribution .+ get(group,String(src.type),zeros(length(f)))
-		end
-	else
-		for (name,src) in arg.byname
-			group[name] = src.contribution
-		end
-		names = keys(group)
-	end
-
+	title --> "Boise contribution"
 	if length(f)>1
 		framestyle  := :semi
 		xlims       := (fₘᵢₙ,fₘₐₓ)
@@ -161,18 +267,18 @@ contributionplot!(pll::PLL,f::AbstractVector{T}; kw...) where T<:Number = contri
 		xscale      := :log10
 		xlabel      := "Offset frequency (Hz)"
 		ylabel      := "Noise contribution (%)"
-		legend     --> true
-		grid       --> false
 		seriestype  := :line
 		markershape := :none
+		legend     --> true
+		grid       --> false
 		
 		fill = zeros(length(f))
-		for (name,n) in group
-			contr = 100*n./tot
+		for (name,src) in arg.byname
+			contr = 100*src.contribution./tot
 			y = fill .+ contr
 			@series begin
-				label       := name
-				fillrange   := fill
+				label     := name
+				fillrange := fill
 				f, y
 			end
 			fill = y
@@ -180,8 +286,8 @@ contributionplot!(pll::PLL,f::AbstractVector{T}; kw...) where T<:Number = contri
 	else
 		@series begin
 			seriestype := :pie
-			x = String.(keys(group))
-			y = [g[1] for g in values(group)]
+			x = String.(keys(arg.byname))
+			y = [src.contribution[1] for src in values(arg.byname)]
 			x,y	
 		end
 	end

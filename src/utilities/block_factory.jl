@@ -1,8 +1,6 @@
 
 #-------------------------------------------------------------------------------------------
 # Reference clock source
-
-export pllref
 """
 	pllref(name::String, noise::Vector{AbstractNoise}=[], descr::String="")
 
@@ -18,8 +16,6 @@ pllref(name::String, noise::AbstractNoise, descr::String="") = pllref(name, [noi
 
 #-------------------------------------------------------------------------------------------
 # Gain block
-
-export pllgain
 """
 	pllgain(name::String, a::Number=1, noise::Vector{AbstractNosie}=[], descr::String="")
 
@@ -35,8 +31,6 @@ pllgain(name::String, a::Number, noise::AbstractNoise, descr::String="") = pllga
 
 #-------------------------------------------------------------------------------------------
 # Frequency divider block
-
-export plldiv
 """
 	plldiv(name::String, ndiv::Int=2, noise::Vector{AbstractNoise}=[], descr::String="")
 
@@ -52,8 +46,6 @@ plldiv(name::String, ndiv::Int, noise::AbstractNoise, descr::String="") = plldiv
 
 #-------------------------------------------------------------------------------------------
 # Multi-modulus divider (MMD) block
-
-export pllmmd
 """
 	pllmmd(name::String, ndiv::Real=100, fs::Real, order::Int=3, noise::Vector{AbstractNoise}=[], descr::String="")
 
@@ -74,8 +66,6 @@ pllmmd(name::String, ndiv::Real, Fs::Real, order::Int, noise::AbstractNoise, des
 
 #-------------------------------------------------------------------------------------------
 # Voltage controlled oscillator (VCO) block
-
-export pllvco
 """
 	pllvco(name::String, kvco::Real, noise::Vector{<:AbstractNoise}=AbstractNoise[], descr::String="")
 

@@ -1,7 +1,5 @@
 using Polynomials
 
-export TF, bode, unwrap, unwrap!, classify
-
 
 """
 	TF

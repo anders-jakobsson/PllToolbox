@@ -55,8 +55,6 @@ end
 
 
 
-export pllstep
-
 """
 	y,t = pllstep(pll:PLL, tfinal=0, npoints=100)
 

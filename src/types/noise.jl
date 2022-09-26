@@ -7,13 +7,6 @@ using Interpolations:BSpline,Gridded,Line,Linear,OnGrid,Quadratic,extrapolate,in
 
 
 
-#-------------------------------------------------------------------------------------------
-# Declared types
-
-export AbstractNoise, NoNoise, WhiteNoise, PinkNoise
-export ΣΔNoise, ΔΣNoise, SDNoise, DSNoise
-
-
 
 
 """
