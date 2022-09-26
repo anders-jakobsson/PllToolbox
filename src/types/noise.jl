@@ -3,7 +3,6 @@
 # Imported types
 
 using Statistics:std
-using ControlSystems:LTISystem
 using Interpolations:BSpline,Gridded,Line,Linear,OnGrid,Quadratic,extrapolate,interpolate,scale
 
 
@@ -65,15 +64,15 @@ julia> WhiteNoise("R1 noise", 4.0*1.380649e-23*300*1e3) # Thermal noise of 1kohm
 struct WhiteNoise <: AbstractNoise
 	name::String
 	psd::Float64
-	H::LTISystem
-	function WhiteNoise(name::String, psd::Real, H::LTISystem=tf(1))
-		new(name, psd, H)
+	tf::TF
+	function WhiteNoise(name::String, psd::Real, tf::TF=TF())
+		new(name, psd, tf)
 	end
 end
 
 
 function (x::WhiteNoise)(f::Vector{Float64})
-	m = abs.(freqresp(x.H, 2π*f))[:]
+	m = abs.(magresp(x.tf,f))
 	x.psd * (m.^2)
 end
 
@@ -112,8 +111,8 @@ struct PinkNoise <: AbstractNoise
 	fx::Vector{Float64}
 	px::Vector{Float64}
 	logy::Bool
-	H::LTISystem
-	function PinkNoise(name::AbstractString, fx::AbstractVector{<:Real}, px::AbstractVector{<:Real}, logy::Bool=true, H::LTISystem=tf(1))
+	tf::TF
+	function PinkNoise(name::AbstractString, fx::AbstractVector{<:Real}, px::AbstractVector{<:Real}, logy::Bool=true, tf::TF=TF())
 		if length(fx)<2
 			error("frequency vector must contain at least two elements")
 		end
@@ -124,12 +123,12 @@ struct PinkNoise <: AbstractNoise
 		if !logy
 			px = 10*log10.(px[:])
 		end
-		new(name, fx[:], px[:], logy, H)
+		new(name, fx[:], px[:], logy, tf)
 	end
 end
 
 function (x::PinkNoise)(f::Vector{Float64})
-	m = abs.(freqresp(x.H, 2π*f))[:]
+	m = abs.(magresp(x.tf,f))
 	y = similar(f)
 
 	dflin = diff(x.fx)
@@ -183,14 +182,14 @@ struct ΣΔNoise <: AbstractNoise
 	b::Float64
 	c::Float64
 	f0::Float64
-	H::LTISystem
-	function ΣΔNoise(name::String, a::Real, b::Real, c::Real, f0::Real, H::LTISystem=tf(1))
-		new(name, a, b, c, f0, H)
+	tf::TF
+	function ΣΔNoise(name::String, a::Real, b::Real, c::Real, f0::Real, tf::TF=TF())
+		new(name, a, b, c, f0, tf)
 	end
 end
 
 function (x::ΣΔNoise)(f::Vector{Float64})
-	m = abs.(freqresp(x.H, 2π*f))[:]
+	m = abs.(magresp(x.tf,f))
 	(x.a*(x.b*sin.(f/x.f0)).^x.c) .* (m.^2)
 end
 

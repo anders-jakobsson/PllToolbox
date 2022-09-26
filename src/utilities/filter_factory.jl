@@ -1,5 +1,4 @@
 export pllfilter
-# using Infiltrator
 
 
 
@@ -84,7 +83,6 @@ function pllfilter(name::String, Aloop::Real, fc::Real, pm::Real, temp::Real, R�
 		p1 = x[2]
 		p2 = p1*r21
 		p3 = p1*r21*r32
-		# z = 1.115/((p1+p2+p3)*ωc^2)
 
 		A0 = (Kl/ωc^2) * sqrt((1+(ωc*z)^2) / ((1+(ωc*p1)^2)*(1+(ωc*p2)^2)))
 		A1 = A0*(p1+p2)
@@ -96,7 +94,6 @@ function pllfilter(name::String, Aloop::Real, fc::Real, pm::Real, temp::Real, R�
 		R₂ = z/C₂
 		R₃ = A2/(C₁*C₃*z)
 		R₄ = 0
-		# @infiltrate
 		if p3>0
 			A̅1 = A0*(p1+p3)
 			A̅2 = A0*p1*p3
@@ -119,7 +116,6 @@ function pllfilter(name::String, Aloop::Real, fc::Real, pm::Real, temp::Real, R�
 			C₄ = A0 - C₁ - C₂ - C₃
 			R₂ = z/C₂
 			R₄ = A3/(z*R₃*C₁*C₃*C₄)
-			# @infiltrate
 		end
 	end
 	R = [R₂,R₃,R₄]
@@ -161,10 +157,10 @@ function pllfilter(name::String, res::Vector{<:Real}, cap::Vector{<:Real}, temp:
 		x = C₂*R₂*(C₁+C₃) + C₃*R₃*(C₁+C₂)
 		y = C₁+C₂+C₃
 		fden = [a,b,c,d]
-		H = tf([t,1]/d, [fden;0]/d)
-		Hn2 = tf(C₂, fden)
-		Hn3 = tf([u,v], fden)
-		Hn4 = tf([w,x,y], fden)
+		H = TF([t,1]/d, [fden;0]/d, name)
+		Hn2 = TF(C₂, fden)
+		Hn3 = TF([u,v], fden)
+		Hn4 = TF([w,x,y], fden)
 		noise = WhiteNoise[]
 		if order>1
 			noise = [WhiteNoise("R2 noise", kT4*R₂, Hn2)]
@@ -185,9 +181,9 @@ function pllfilter(name::String, res::Vector{<:Real}, cap::Vector{<:Real}, temp:
 		u = C₁*C₂*R₂
 		v = C₁+C₂
 		fden = [a,b,1]
-		H = tf([R₁*t,R₁], fden)
-		Hn1 = tf(1, fden)
-		Hn2 = tf([u,v], fden)
+		H = TF([R₁*t,R₁], fden, name)
+		Hn1 = TF(1, fden)
+		Hn2 = TF([u,v], fden)
 		noise = AbstractNoise[]
 
 	elseif topo==3
@@ -199,9 +195,9 @@ function pllfilter(name::String, res::Vector{<:Real}, cap::Vector{<:Real}, temp:
 		u = C₁*C₂*R₂
 		v = C₁+C₂
 		fden = [a,b,1]
-		H = tf([R₁*t,R₁], fden)
-		Hn1 = tf(1, fden)
-		Hn2 = tf([u,v], fden)
+		H = TF([R₁*t,R₁], fden), name
+		Hn1 = TF(1, fden)
+		Hn2 = TF([u,v], fden)
 		noise = AbstractNoise[]
 
 

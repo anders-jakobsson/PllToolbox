@@ -27,12 +27,12 @@ end
 
 
 
-function plltfrepr(H::LTISystem)
-	numstr = pllpolyrepr(num(H)[1])
-	denstr = pllpolyrepr(den(H)[1])
-	len = max(length(numstr), length(denstr))
-	numstr = " "^max(0,round(Int,(len-length(numstr))/2)) * numstr
-	denstr = " "^max(0,round(Int,(len-length(denstr))/2)) * denstr
-	str = numstr * "\n" * "-"^len * "\n" * denstr
-	return str
-end
+# function plltfrepr(H::LTISystem)
+# 	numstr = pllpolyrepr(num(H)[1])
+# 	denstr = pllpolyrepr(den(H)[1])
+# 	len = max(length(numstr), length(denstr))
+# 	numstr = " "^max(0,round(Int,(len-length(numstr))/2)) * numstr
+# 	denstr = " "^max(0,round(Int,(len-length(denstr))/2)) * denstr
+# 	str = numstr * "\n" * "-"^len * "\n" * denstr
+# 	return str
+# end

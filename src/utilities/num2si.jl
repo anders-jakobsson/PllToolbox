@@ -29,10 +29,12 @@ end
 
 function num2si(::Type{String}, x::Integer)
 	xs,xp, = num2si(x)
-	return string(xs) * " " * xp
+	space = isempty(xp) ? "" : " "
+	return string(xs) * space * xp
 end
 
 function num2si(::Type{String}, x::Real, n::Integer=2)
 	xs,xp, = num2si(x)
-	return string(round(xs,digits=n)) * " " * xp
+	space = isempty(xp) ? "" : " "
+	return string(round(xs,digits=n)) * space * xp
 end

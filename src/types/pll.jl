@@ -9,6 +9,7 @@ using AbstractTrees
 #-------------------------------------------------------------------------------------------
 # Internal functions
 
+export dB10, dB20
 dB10(x) = 10*log10(x)
 dB20(x) = 2*dB10(x)
 
@@ -21,40 +22,85 @@ export PLL
 """
 	PLL
 
-Linear time invariant (LTI) PLL model, based on a continuous-time approximation [1].
+Linear time invariant (LTI) PLL model, based on a continuous-time approximation [1]. The PLL
+model has the following structure:
+
+       ┏━━━━━━┓   ┏━━━┓   ┏━━━━━━━━┓       ┏━━━━━━┓
+    ───┨ I(s) ┠───┨ + ┠───┨  L(s)  ┠───┬───┨ O(s) ┠───
+       ┗━━━━━━┛   ┗━┯━┛   ┗━━━━━━━━┛   │   ┗━━━━━━┛
+                  ─ │     ┏━━━━━━━━┓   │
+                    └─────┨  F(s)  ┠───┘
+                          ┗━━━━━━━━┛
+
+where I(s), L(s), F(s) and O(s) represent the input, feedforward, feedback and output 
+transfer functions, respectively. An additional closed-loop transfer function, G(s), is 
+formed by the feedback network of L(s) and F(s):
+
+       L(s)
+    ───────────
+    1+L(s)⋅F(s)
+
+Each branch is made up of a set of zero or more instances of [`Block`](@ref). 
 
 [1] TODO! Get reference
 """
 struct PLL
 	name::String
 	description::String
-	input::Vector{Block}
-	forward::Vector{Block}
-	feedback::Vector{Block}
-	output::Vector{Block}
+	input::Vector{CascadedBlock}
+	forward::Vector{CascadedBlock}
+	feedback::Vector{CascadedBlock}
+	output::Vector{CascadedBlock}
+
+	_ol_tf::TF
+	_cl_tf::TF
+	_in_tf::TF
+	_out_tf::TF
+	_fwd_tf::TF
+	_fbk_tf::TF
 
 	@doc """
-		PLL(name, description="", input=[], forward=[], feedback=[], output=[])
+		PLL(name, input, forward, feedback, output, description="")
 
-	Create a PLL object with the given name and description. The input, forward, feedback
-	and output vectors hold the blocks that make up the respective path of the PLL model.
-	A PLL model is usually initialized empty, with blocks later added using the 
-	[`add_input!`](@ref), [`add_forward!`](@ref), [`add_feedback!`](@ref) and 
-	[`add_output!`](@ref) functions.
+	Create a PLL model.
+
+	The input, forward, feedback and output blocks are given by the respective iterable.
+	Note that ordered iterables must be used to guarantee the block order. 
 
 	# Arguments
 	- `name::String`: model name
+	- `input`: ordered iterable of blocks on the input path
+	- `forward`: ordered iterable of blocks on the forward path
+	- `feedback`: ordered iterable of blocks on the feedback path
+	- `output`: ordered iterable of blocks on the output path
 	- `description::String`: model description
-	- `input::Vector{::Block}`: vector of blocks on the input path
-	- `forward::Vector{::Block}`: vector of blocks on the forward path
-	- `feedback::Vector{::Block}`: vector of blocks on the feedback path
-	- `output::Vector{::Block}`: vector of blocks on the output path
 	"""
-	function PLL(name::String, description::String="",
-		input::Vector{Block}=Block[], forward::Vector{Block}=Block[],
-		feedback::Vector{Block}=Block[], output::Vector{Block}=Block[])
-		new(name, description, input, forward, feedback, output)
+	function PLL(name::String, input, forward, feedback, output, description::String="")
+		hin  = reduce(*, (s->s.tf).(input),     init=TF())
+		hfwd = reduce(*, (s->s.tf).(forward),   init=TF())
+		hfbk = reduce(*, (s->s.tf).(feedback),  init=TF())
+		hout = reduce(*, (s->s.tf).(output),    init=TF())
+		hol = hfwd*hfbk
+		hcl = hfwd/(1+hol)
+		inp = _parse_branch(input, hcl*hout)
+		fwd = _parse_branch(forward, hout/(1+hol))
+		fbk = _parse_branch(feedback, -hout*hcl)
+		out = _parse_branch(output)
+		new(name, description, inp, fwd, fbk, out, hol, hcl, hin, hout, hfwd, hfbk)
 	end
+end
+
+
+function _parse_branch(blocks, tf::TF=TF())
+	vec = Vector{CascadedBlock}(undef, length(blocks))
+	ntf = tf
+	nᵢ = length(vec)
+	for bᵢ in reverse(eachindex(blocks))
+		vec[nᵢ] = CascadedBlock(blocks[bᵢ], TF(ntf,name=blocks[bᵢ].name*" NTF"))
+		nᵢ  -= 1
+		ntf *= blocks[bᵢ].tf
+	end
+	return vec
 end
 
 
@@ -70,20 +116,27 @@ function PLL()
 	Kvco = 10e6
 	Nmmd = 2e9*Nref/fref
 	Nout = 2
-	ref = pllref("80MHz reference clock", PinkNoise("Reference noise",[100,1e6,1e8,1e9],[-20,-130.0,-160.0,-170.0]))
-	rdiv = plldiv("Reference divider", Nref, WhiteNoise("Reference divider noise", 10^-13))
-	pfd = pllgain("PFD", 1/(2*pi), WhiteNoise("PFD noise", 10^-12))
-	chp = pllgain("Charge-pump", Icp, WhiteNoise("Charge-pump noise", 10^-18))
+	fnoise = 10 .^(1:8)
+	pnoise = Dict(
+		"ref"  => -[120,130,140,150,160,165,166,166],
+		"rdiv" => -[130,140,150,160,164,165,165,165],
+		"vco"  => -[000,030,060,080,100,120,140,160]
+	)
+	ref  = pllref("REF", PinkNoise("Ref. clock",fnoise, pnoise["ref"]), "80MHz reference clock")
+	rdiv = plldiv("RDIV", Nref, PinkNoise("Ref. div.", fnoise, pnoise["ref"]),"Reference divider")
+	pfd = pllgain("PFD", 1/(2*pi))
+	chp = pllgain("CP", Icp)
 	# lpf = pllfilter("LPF", [9225,8547], [19,540,19]*1e-12)
 	lpf, = pllfilter("LPF", Icp*Kvco/Nmmd, 100e3, 53, 300, 0.2)
-	vco = pllvco("2GHz VCO", Kvco, PinkNoise("VCO noise",[100,1e6,1e8,1e9],[0.0,-110.0,-140.0,-145.0]))
+	vco = pllvco("VCO", Kvco, PinkNoise("VCO", fnoise, pnoise["vco"]))
 	mmd = pllmmd("MMD", Nmmd, fref/Nref, 3)
-	odiv = plldiv("Output divider", Nout, WhiteNoise("Output divider noise", 10^-13))
-	pll = PLL("Example PLL model", "Generated by the PllToolbox module")
-	addinput!(pll, ref, rdiv)
-	addforward!(pll, pfd, chp, lpf, vco)
-	addfeedback!(pll, mmd)
-	addoutput!(pll, odiv)
+	odiv = plldiv("ODIV", Nout)
+
+	input = [ref,rdiv]
+	forward = [pfd,chp,lpf,vco]
+	feedback = [mmd]
+	output = [odiv]
+	pll = PLL("Example PLL model", input, forward, feedback, output, "Generated by the PllToolbox module")
 	# fref = 1e6
 	# Nref = 1
 	# Icp = 1e-3
@@ -110,25 +163,61 @@ end
 
 
 #-------------------------------------------------------------------------------------------
-# PLL functions
-export addinput!
-addinput!(pll::PLL, b::Block...) = push!(pll.input,b...)
+# PLL transfer functions
+"""
+    getindex(pll::PLL, key::AbstractString)
 
-export addforward!
-addforward!(pll::PLL, b::Block...) = push!(pll.forward,b...)
+Return the PLL transfer function identified by `key` (case insensitive).
+Throws a `KeyError` unless `key` is one of:
 
-export addfeedback!
-addfeedback!(pll::PLL, b::Block...) = push!(pll.feedback,b...)
+	"closed-loop", "cl"
+	"open-loop", "ol"
+	"input", "in"
+	"output", "out"
+	"forward", "fwd"
+	"feedback", "fbk"
 
-export addoutput!
-addoutput!(pll::PLL, b::Block...) = push!(pll.output,b...)
+"""
+function getindex end
+
+Base.getindex(pll::PLL, keys::AbstractString...) = getindex.(Ref(pll),keys)
+
+function Base.getindex(pll::PLL, key::AbstractString)
+	lowerkey = lowercase(key)
+	clkeys  = ("cl","closed-loop")
+	olkeys  = ("ol","open-loop")
+	inkeys  = ("in","input")
+	outkeys = ("out","output")
+	fwdkeys = ("fwd","forward")
+	fbkkeys = ("fbk","feedback")
+	if any(lowerkey.==olkeys)   return getfield(pll, :_ol_tf)   end
+	if any(lowerkey.==clkeys)   return getfield(pll, :_cl_tf)   end
+	if any(lowerkey.==inkeys)   return getfield(pll, :_in_tf)   end
+	if any(lowerkey.==outkeys)  return getfield(pll, :_out_tf)  end
+	if any(lowerkey.==fwdkeys)  return getfield(pll, :_fwd_tf)  end
+	if any(lowerkey.==fbkkeys)  return getfield(pll, :_fbk_tf)  end
+	throw(KeyError(key))
+end
+
+
+
+
+export pllntf
+"""
+	ntf = pllntf(pll)
+
+Return an array of noise transfer functions (NTFs) for a PLL. 
+"""
+function pllntf(pll::PLL)
+	[cb.ntf for cb=vcat(pll.input,pll.forward,pll.feedback,pll.output)]
+end
 
 
 
 
 #-------------------------------------------------------------------------------------------
-# PLL interface implementations
-function Base.show(io::IO, x::PLL)
+# Interface implementations
+function Base.show(io::IO, ::MIME"text/plain", x::PLL)
 	println(io, "PLL structure")
 	println(io, "    name: $(x.name)")
 	if length(x.input)>0
@@ -166,9 +255,10 @@ function Base.show(io::IO, x::PLL)
 end
 
 
+
 struct PathNode
 	name::String
-	children::Vector{Block}
+	children::Vector{CascadedBlock}
 end
 
 

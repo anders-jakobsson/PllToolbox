@@ -1,63 +1,57 @@
-# -----------------------------------------------------------------------------------------
-# Imported types
-
-using ControlSystems
 using AbstractTrees
 
 
 
 
 #------------------------------------------------------------------------------------------
-# Declared types
-
+# Block type
 export Block
-
-
-
-
 """
-    Block(name, H=tf(1), noise=Vector{<:AbstractNoise})
+    Block
 
-Construct a PLL block from the given name, transfer function and noise argument.
-
-The name must be a non-empty string. Blocks are normally constructed by one of the 
-factory functions, such as pllgain or pllvco.
-
-
-# Examples
-```@meta
-DocTestSetup = quote
-    using PllToolbox
-end
-```
-```jldoctest
-julia> Block("VCO", tf(1,[1,0]), nothing)
-
-julia> Block("")
-
+Representation of a block in the PLL model. Blocks are normally constructed using one of the 
+factory functions, see [`pllref`](@ref), [`pllgain`](@ref), [`plldiv`](@ref),
+[`pllmmd`](@ref) and [`pllvco`](@ref).
 """
 struct Block{T}
 	name::String
-	H::LTISystem
+	tf::TF
 	noise::Vector{T}
+	descr::String
 
-	function Block(name::String, H::LTISystem=tf(1), noise::Vector{T}=AbstractNoise[]) where {T<:AbstractNoise}
+	@doc """
+		Block(name, tf::TF=TF(1), noise::Vector{<:AbstractNoise}, description::String="")
+
+	Construct a PLL block from the given name, transfer function and noise argument.
+	The name must be a non-empty string. See also [`pllref`](@ref), [`pllgain`](@ref), 
+	[`plldiv`](@ref), [`pllmmd`](@ref) and [`pllvco`](@ref).
+
+
+	# Examples
+	```@meta
+	DocTestSetup = quote
+		using PllToolbox
+	end
+	```
+	```jldoctest
+	julia> Block("VCO", TF(1,[1,0]), nothing)
+
+	julia> Block("")
+
+	"""
+	function Block(name::String, tf::TF=TF(name,1), noise::Vector{T}=AbstractNoise[], descr::String="") where {T<:AbstractNoise}
 		# Hconv = convert(TransferFunction{Continuous,ControlSystems.SisoRational{Float64}}, H)
-		new{T}(name, H, noise)
+		new{T}(name, tf, noise, descr)
 	end
 end
 
-Block(name::String, H::LTISystem, noise::AbstractNoise) = Block(name, H, [noise])
-
-
-
-
+Block(name::String, tf::TF, noise::AbstractNoise, descr::String="") = Block(name, tf, [noise], descr)
 
 
 
 
 """
-    Block(b, name=b.name, H=b.H, noise=b.noise)
+    Block(b, name=b.name, tf=b.tf, noise=b.noise)
 
 Copy a block, with optional override of attributes.
 
@@ -74,11 +68,7 @@ julia> b = Block("VCO", tf(1,[1,0]), nothing)
 julia> Block(b, name="VCO2")
 
 """
-Block(block::Block, name::String=block.name, H::LTISystem=block.tf, noise::AbstractNoise=block.noise) = Block(name, H, noise)
-
-
-
-
+Block(block::Block; name::String=block.name, tf::TF=block.tf, noise::AbstractNoise=block.noise, descr::String=block.descr) = Block(name, tf, noise, descr)
 
 
 
@@ -87,11 +77,11 @@ Block(block::Block, name::String=block.name, H::LTISystem=block.tf, noise::Abstr
 function Base.show(io::IO, x::Block)
 	name = x.name
 	if isnothing(x.noise)
-		println(io, "PLL block \"$(x.name)\" with no noise sources")
+		print(io, "PLL block \"$(x.name)\" with no noise sources")
 	elseif length(x.noise)>1
-		println(io, "PLL block \"$(x.name)\" with $(length(x.noise)) noise sources")
+		print(io, "PLL block \"$(x.name)\" with $(length(x.noise)) noise sources")
 	else
-		println(io, "PLL block \"$(x.name)\" with one noise source")
+		print(io, "PLL block \"$(x.name)\" with one noise source")
 	end
 end
 
@@ -102,5 +92,26 @@ end
 
 
 
+#-------------------------------------------------------------------------------------------
+# CascadedBlock type
+struct CascadedBlock
+	block::Block
+	ntf::TF
+end
 
-AbstractTrees.children(node::Block) = ()
+
+Base.propertynames(cb::CascadedBlock, private::Bool=false) = (fieldnames(Block)...,:ntf)
+function Base.getproperty(cb::CascadedBlock, name::Symbol)
+	return name===:ntf ? getfield(cb,:ntf) : getfield(getfield(cb,:block),name)
+end
+
+
+# Custom pretty-printing.
+Base.show(io::IO, x::CascadedBlock) = show(io, getfield(x,:block))
+
+
+
+
+
+
+AbstractTrees.children(node::CascadedBlock) = ()
