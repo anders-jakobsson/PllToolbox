@@ -7,7 +7,8 @@ using Polynomials
 using Printf
 using Roots
 using RecipesBase
-
+using Interpolations
+using AbstractTrees
 
 export pllnoise, pllnoiseinfo, pllintegnoise, noiseplot, noiseplot!, contributionplot, contributionplot!
 export pllstep, stepplot, stepplot!

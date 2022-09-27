@@ -78,7 +78,6 @@ end
 function pllintegnoise(pn::PllNoise, fstart::Number=pn.frequency[1], fstop::Number=pn.frequency[end])
 	istart = findfirst(x->x>=fstart, pn.frequency)
 	istop  = findlast(x->x<=fstop, pn.frequency)
-	println(pn.frequency)
 	df = diff(pn.frequency[istart:istop])
 
 	total  = 2*sum(pn.total[istart:istop-1] .* df)
@@ -225,7 +224,6 @@ end
 
 
 @userplot IntegNoisePlot
-
 
 @recipe function finp(cp::IntegNoisePlot)
 	length(cp.args)≥1 || error("No arguments supplied")
