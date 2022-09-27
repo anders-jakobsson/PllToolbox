@@ -95,7 +95,7 @@ end
 
 
 function pllnoiseinfo(pll::PLL, fc::Float64, fstart::Float64=1e3, fstop::Float64=100e6, npoints::Integer=1000)
-	pn = pllnoise(pll,10 .^LinSpace(fstart,fstop,npoints))
+	pn = pllnoise(pll,10 .^LinRange(log10(fstart),log10(fstop),npoints))
 	pllnoiseinfo(pn,fc)
 end
 

@@ -9,8 +9,9 @@ function num2si(x::AbstractArray{<:Real})
 	pow = [-24,-21,-18,-15,-12,-9,-6,-3,0,3,6,9,12,15,18,21,24]
 	xs = copy(x)
 
-	a = log10(minimum(abs.(x)))
-	b = log10(maximum(abs.(x)))
+	xlog = [xᵢ==0 ? 1 : log10(abs(xᵢ)) for xᵢ in x]
+	a = minimum(xlog)
+	b = maximum(xlog)
 	if any(isnan.(x)) || any(isinf.(x)) || (0<=a<3 && 0<=b<3)
 		return xs,"",1.0
 	end
