@@ -180,14 +180,14 @@ function pllbodeinfo(pll::PLL)
 	end
 	
 	# Function for magnitude:
-	m₀(f::Float64) = 20*log10(abs(OL(2im*pi*f)))
+	m₀(f::Float64) = dB20(abs(OL(2im*pi*f)))
 
 	# Function for phase+π:
 	ϕ₀(f::Float64) = angle(OL(2im*pi*f))+π
 
 	# Find frequency of zero crossing:
-	fₘ₀ = find_zero(m₀, favg)
-	fᵩ₀ = find_zero(ϕ₀, favg)
+	fₘ₀ = find_zero(m₀, favg, Order1())
+	fᵩ₀ = find_zero(ϕ₀, favg, Order1())
 
 
 	pm = 180*ϕ₀(fₘ₀)/pi
