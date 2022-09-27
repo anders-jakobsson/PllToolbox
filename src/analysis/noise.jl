@@ -256,7 +256,7 @@ contributionplot!(pll::PLL,f::AbstractVector{T}; kw...) where T<:Number = contri
 	fₘᵢₙ = minimum(f)
 	fₘₐₓ = maximum(f)
 	
-	title --> "Boise contribution"
+	title --> "Noise contribution"
 	if length(f)>1
 		framestyle  := :semi
 		xlims       := (fₘᵢₙ,fₘₐₓ)
