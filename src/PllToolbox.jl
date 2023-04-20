@@ -1,7 +1,7 @@
 module PllToolbox
 
 using Tables
-using LinearAlgebra
+using NLsolve
 using OrdinaryDiffEq
 using Polynomials
 using Printf
