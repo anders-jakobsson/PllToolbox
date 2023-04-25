@@ -129,8 +129,8 @@ function Base.show(io::IO, ::MIME"text/plain", x::PllNoiseSource)
 		println("    max source noise: $(maximum(dB10.(x.source))) dBz/Hz")
 		  print("    max noise contribution: $(maximum(dB10.(x.contribution))) dBc/Hz")
 	else
-		println("    source noise: $(dB10.(x.source)) dBz/Hz")
-		  print("    noise contribution: $(dB10.(x.contribution)) dBc/Hz")
+		println("    source noise: $(dB10(first(x.source))) dBz/Hz")
+		  print("    noise contribution: $(dB10(first(x.contribution))) dBc/Hz")
 	end
 end
 
