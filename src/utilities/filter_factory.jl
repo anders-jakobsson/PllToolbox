@@ -1,10 +1,3 @@
-function _rms(x::Vector{Float64})
-	sqrt(sum(x.^2)/length(x))
-end
-
-
-
-
 function pllfilter(name::String, k::Number, z::Vector{<:Number}, p::Vector{<:Number})
 	Block(name, zpk(z,p,k), AbstractNoise[])
 end

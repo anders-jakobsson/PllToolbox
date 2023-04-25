@@ -121,6 +121,34 @@ end
 
 #-------------------------------------------------------------------------------------------
 # Show implementation
+
+function Base.show(io::IO, ::MIME"text/plain", x::PllNoiseSource)
+	println("PLL phase noise source:")
+	println("    type: $(x.type)")
+	if length(x.source)>1
+		println("    max source noise: $(maximum(dB10.(x.source))) dBz/Hz")
+		  print("    max noise contribution: $(maximum(dB10.(x.contribution))) dBc/Hz")
+	else
+		println("    source noise: $(dB10.(x.source)) dBz/Hz")
+		  print("    noise contribution: $(dB10.(x.contribution)) dBc/Hz")
+	end
+end
+
+function Base.show(io::IO, ::MIME"text/plain", x::PllNoise)
+	str = length(x.frequency)==1 ? "Single" : repr(len)
+	print(io, "$str-point PLL phase noise with $(length(x.byindex)) contributors")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", x::PllIntegNoise)
+	println("PLL integrated phase noise:")
+	println("    integration limits: $(num2si(String,x.frequency[1]))Hz to $(num2si(String,x.frequency[2]))Hz")
+	println("    total noise: $(dB10.(x.total)) dBz")
+	  print("    contributions:")
+	for (key,value) in x.byname
+		print("\n        $key: $(dB10(value)) dBc ($(100*value/total) %)")
+	end
+end	
+
 function Base.show(io::IO, ::MIME"text/plain", x::PllNoiseInfo)
 	println("PLL phase noise info:")
 	println("    center frequency: $(num2si(String,x.fc))Hz")
@@ -128,7 +156,7 @@ function Base.show(io::IO, ::MIME"text/plain", x::PllNoiseInfo)
 	println("    integrated phase noise: $(round(dB10(x.ipn),digits=2)) dBc")
 	println("    phase error: $(num2si(String,x.pe))°")
 	println("    residual FM: $(num2si(String,x.rfm))Hz")
-	println("    jitter: $(num2si(String, x.j))s")
+	  print("    jitter: $(num2si(String, x.j))s")
 end
 
 
