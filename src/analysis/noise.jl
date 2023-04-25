@@ -135,7 +135,7 @@ function Base.show(io::IO, ::MIME"text/plain", x::PllNoiseSource)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", x::PllNoise)
-	str = length(x.frequency)==1 ? "Single" : repr(len)
+	str = length(x.frequency)==1 ? "Single" : repr(length(x.frequency))
 	print(io, "$str-point PLL phase noise with $(length(x.byindex)) contributors")
 end
 
