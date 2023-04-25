@@ -126,11 +126,11 @@ function Base.show(io::IO, ::MIME"text/plain", x::PllNoiseSource)
 	println("PLL phase noise source:")
 	println("    type: $(x.type)")
 	if length(x.source)>1
-		println("    max source noise: $(maximum(dB10.(x.source))) dBz/Hz")
-		  print("    max noise contribution: $(maximum(dB10.(x.contribution))) dBc/Hz")
+		println("    max source noise: $(round(maximum(dB10.(x.source)),digits=2)) dBz/Hz")
+		  print("    max noise contribution: $(round(maximum(dB10.(x.contribution)),digits=2)) dBc/Hz")
 	else
-		println("    source noise: $(dB10(first(x.source))) dBz/Hz")
-		  print("    noise contribution: $(dB10(first(x.contribution))) dBc/Hz")
+		println("    source noise: $(round(dB10(first(x.source)),digits=2)) dBz/Hz")
+		  print("    noise contribution: $(round(dB10(first(x.contribution)),digits=2)) dBc/Hz")
 	end
 end
 
