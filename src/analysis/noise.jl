@@ -47,7 +47,7 @@ function pllnoise(pll::PLL, f::Vector{Float64}; byfiltertype::Bool=false)
 		pr = magresp(bᵢ.ntf,f).^2
 		for nᵢ in bᵢ.noise
 			noise = nᵢ(f)
-			contr = noise.*pr.-3
+			contr = noise.*pr.*0.5
 			if byfiltertype
 				type = bᵢ.ntf.type
 				if String(type) in keys(byname)

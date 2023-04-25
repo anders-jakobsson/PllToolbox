@@ -53,30 +53,17 @@ function pllfilter(name::String, Aloop::Real, fc::Real, pm::Real, temp::Real, R�
 		# These two equations can be used to numerically solve for z and p1. This is done 
 		# by forming a vector valued function and its Jacobian matrix.
 
-		ϕc = (z,p1) -> atan(ωc*z)-atan(ωc*p1)-atan(ωc*p1*r21)-atan(ωc*p1*r21*r32)-ϕm
-		Dωϕc = (z,p1) -> z/(1+(ωc*z)^2)-p1/(1+(ωc*p1)^2)-p1*r21/(1+(ωc*p1*r21)^2)-p1*r21*r32/(1+(ωc*p1*r21*r32)^2)
-		f = x::Vector{Float64} -> [
-				ϕc(x[1],x[2])
-				Dωϕc(x[1],x[2])
-			]
-
-		J11 = x::Vector{Float64} -> ωc/(1+(ωc*x[1])^2)
-		J12 = x::Vector{Float64} -> -ωc/(1+(ωc*x[2])^2) - ωc*r21/(1+(ωc*r21*x[2])^2) - ωc*r21*r32/(1+(ωc*r21*r32*x[2])^2)
-		J21 = x::Vector{Float64} -> (1-(ωc*x[1])^2) / (1+(ωc*x[1])^2)^2
-		J22 = x::Vector{Float64} -> -(1-(ωc*x[2])^2)/(1+(ωc*x[2])^2)^2 - r21*(1-(ωc*r21*x[2])^2)/(1+(ωc*r21*x[2])^2)^2 - r21*r32*(1-(ωc*r21*r32*x[2])^2)/(1+(ωc*r21*r32*x[2])^2)^2
-		J = x::Vector{Float64} -> [J11(x) J12(x);J21(x) J22(x)]
-
-		p1init = (sec(ϕm)-tan(ϕm)) / (ωc*(1+r21))
-		x = [1/(ωc^2*p1init*(1+r21)); p1init]
-		for k=1:100
-			x = x - J(x)\f(x)
-			if _rms(f(x))<10*eps(Float64)
-				break
-			end
+		function f!(F,x)
+			z,p1 = x
+			F[1] = atan(ωc*z)-atan(ωc*p1)-atan(ωc*p1*r21)-atan(ωc*p1*r21*r32)-ϕm
+			F[2] = z/(1+(ωc*z)^2)-p1/(1+(ωc*p1)^2)-p1*r21/(1+(ωc*p1*r21)^2)-p1*r21*r32/(1+(ωc*p1*r21*r32)^2)
 		end
+
+		pinit = (sec(ϕm)-tan(ϕm)) / (ωc*(1+r21))
+		zinit = 1/(ωc^2*pinit*(1+r21))
+		solution = nlsolve(f!, [zinit,pinit], ftol=1e-9, autodiff=:forward)
 		
-		z = x[1]
-		p1 = x[2]
+		z,p1 = solution.zero
 		p2 = p1*r21
 		p3 = p1*r21*r32
 
