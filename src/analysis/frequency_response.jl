@@ -184,15 +184,16 @@ function pllbodeinfo(pll::PLL)
 
 	# Function for phase+π:
 	ϕ₀(flog::Float64) = angle(OL(2im*pi*10^flog))+π
+	i₀(flog::Float64) = imag(OL(2im*pi*10^flog)+π)
 
 	fg0log = find_zero(m₀, log10(favg), Order1())
-	fϕ0log = find_zero(ϕ₀, log10(favg), Order1())
+	fϕ0log = find_zero(i₀, log10(favg), Order1())
 	fg0 = 10^fg0log
 	fϕ0 = 10^fϕ0log
 
 
 	pm = 180*ϕ₀(fg0log)/pi
-	gm = m₀(fϕ0log)
+	gm = -m₀(fϕ0log)
 
 	PllBodeInfo(fg0,pm, fϕ0,gm)
 end
